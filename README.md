@@ -56,3 +56,7 @@ python main.py --self-test
 ## Licence
 
 This source code is licensed under GNU GPLv3. See [LICENSE](LICENSE).
+
+## Notes
+
+This project was developed with assistance from OpenAI Codex. The code has been reviewed and tested before release.
