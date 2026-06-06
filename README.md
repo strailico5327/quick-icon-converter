@@ -1,10 +1,10 @@
 # Quick Icon Converter
 
-A small Qt desktop tool for converting PNG or SVG files into size-specific Windows `.ico` files.
+A small Qt desktop tool for converting PNG or SVG files into size-specific `.ico` or `.png` files.
 
 ## Requirements
 
-The interface and SVG rendering use PySide6. Image resizing and ICO output use Pillow.
+The interface and SVG rendering use PySide6. Image resizing and PNG/ICO output use Pillow.
 
 ```powershell
 python -m pip install -r requirements.txt
@@ -17,6 +17,13 @@ Run the app:
 ```powershell
 python main.py
 ```
+
+## H5 static site
+
+The browser-only version lives in `site/`. Open `site/index.html` directly or deploy the
+`site/` folder to any static host. It keeps all conversion work in the browser and
+downloads either one `.ico` file or an `ico_converted.zip` archive when multiple outputs
+are generated.
 
 Add files by:
 
@@ -31,12 +38,14 @@ Queue behaviour:
 - Highlight one or more rows with normal platform shortcuts such as Ctrl/Shift selection.
 - The size checkboxes only affect highlighted rows, so each file can have its own size set.
 - `All sizes` selects every size for the highlighted rows; when all are selected it changes to `Clear sizes`.
+- The `PNG`/`ICO` toggle chooses the output format for the next conversion run.
+- Presets apply to highlighted rows: `Desktop Mini` selects 16x, 24x, 32x, 48x in ICO mode; `Desktop Large` selects 64x, 128x, 256x in ICO mode; `Web Favicon` selects 32x, 128x, 180x, 192x in PNG mode.
 
 Output behaviour:
 
-- By default, output files are saved next to each source file in `ico_converted`.
+- By default, output files are saved next to each source file in `ico_converted` or `png_converted`, depending on the selected output format.
 - Choosing an output folder sends every queue output to that folder instead.
-- Output files are named with the size suffix, for example `logo_16x.ico` and `logo_256x.ico`.
+- Output files are named with the size suffix, for example `logo_16x.ico`, `logo_256x.ico`, or `logo_192x.png`.
 
 Conversion controls:
 

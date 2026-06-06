@@ -10,8 +10,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 
-SIZE_OPTIONS = (16, 24, 32, 48, 64, 128, 256)
+SIZE_OPTIONS = (16, 24, 32, 48, 64, 128, 180, 192, 256)
 DEFAULT_SIZES = {16, 32, 48, 256}
+OUTPUT_FORMATS = ("png", "ico")
+PRESETS = {
+    "Desktop Mini": ("ico", {16, 24, 32, 48}),
+    "Desktop Large": ("ico", {64, 128, 256}),
+    "Web Favicon": ("png", {32, 128, 180, 192}),
+}
 SUPPORTED_SUFFIXES = {".png", ".svg"}
 APP_ICON_NAME = "quick-ico-converter.ico"
 APP_DESCRIPTION = "Convert PNG and SVG images to ICO."
@@ -29,6 +35,7 @@ try:
     from PySide6.QtWidgets import (
         QApplication,
         QAbstractItemView,
+        QButtonGroup,
         QCheckBox,
         QDialog,
         QFileDialog,
@@ -117,18 +124,22 @@ def make_square_icon_source(image, size: int):
     return canvas
 
 
-def output_path_for(input_path: Path, size: int, manual_output_dir: Path | None) -> Path:
-    output_dir = manual_output_dir if manual_output_dir else input_path.parent / "ico_converted"
-    return output_dir / f"{input_path.stem}_{size}x.ico"
+def output_path_for(input_path: Path, size: int, manual_output_dir: Path | None, output_format: str) -> Path:
+    suffix = "png" if output_format == "png" else "ico"
+    default_dir = f"{suffix}_converted"
+    output_dir = manual_output_dir if manual_output_dir else input_path.parent / default_dir
+    return output_dir / f"{input_path.stem}_{size}x.{suffix}"
 
 
-def convert_one_size(input_path: Path, output_path: Path, size: int) -> None:
+def convert_one_size(input_path: Path, output_path: Path, size: int, output_format: str) -> None:
     if not input_path.exists():
         raise RuntimeError("The input file does not exist.")
 
     suffix = input_path.suffix.lower()
     if suffix not in SUPPORTED_SUFFIXES:
         raise RuntimeError("Please choose a PNG or SVG file.")
+    if output_format not in OUTPUT_FORMATS:
+        raise RuntimeError("Please choose PNG or ICO output.")
 
     Image = import_pillow()
     if suffix == ".svg":
@@ -139,7 +150,10 @@ def convert_one_size(input_path: Path, output_path: Path, size: int) -> None:
 
     icon = make_square_icon_source(source, size)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    icon.save(output_path, format="ICO", sizes=[(size, size)])
+    if output_format == "png":
+        icon.save(output_path, format="PNG")
+    else:
+        icon.save(output_path, format="ICO", sizes=[(size, size)])
 
 
 def human_size(byte_count: int) -> str:
@@ -174,10 +188,11 @@ if QT_IMPORT_ERROR is None:
         progress = Signal(int, str, int, str)
         finished = Signal(bool, int)
 
-        def __init__(self, jobs: list[ConversionJob], manual_output_dir: Path | None) -> None:
+        def __init__(self, jobs: list[ConversionJob], manual_output_dir: Path | None, output_format: str) -> None:
             super().__init__()
             self.jobs = jobs
             self.manual_output_dir = manual_output_dir
+            self.output_format = output_format
             self._condition = threading.Condition()
             self._paused = False
             self._cancelled = False
@@ -221,7 +236,8 @@ if QT_IMPORT_ERROR is None:
                         break
 
                     try:
-                        convert_one_size(job.path, output_path_for(job.path, size, self.manual_output_dir), size)
+                        output_path = output_path_for(job.path, size, self.manual_output_dir, self.output_format)
+                        convert_one_size(job.path, output_path, size, self.output_format)
                     except Exception as exc:
                         error_count += 1
                         self.progress.emit(job.row, "Error", remaining, str(exc))
@@ -350,10 +366,12 @@ if QT_IMPORT_ERROR is None:
             self.running = False
             self.paused = False
             self.manual_output_dir: Path | None = None
+            self.output_format = "ico"
             self.syncing_sizes = False
             self.syncing_table = False
 
             self.size_checks: dict[int, QCheckBox] = {}
+            self.preset_buttons: list[QPushButton] = []
             self.table = DropTable()
             self.table.files_dropped.connect(self.add_paths)
             self.table.itemChanged.connect(self.table_item_changed)
@@ -369,6 +387,10 @@ if QT_IMPORT_ERROR is None:
             self.start_button = QPushButton("Start")
             self.clear_button = QPushButton("Clear queue")
             self.all_sizes_button = QPushButton("All sizes")
+            self.mode_group = QButtonGroup(self)
+            self.mode_group.setExclusive(True)
+            self.png_mode_button = QPushButton("PNG")
+            self.ico_mode_button = QPushButton("ICO")
             self.about_button = QPushButton("ⓘ")
             self.drop_hint = QLabel()
             self.preview_label = QLabel("Preview")
@@ -389,8 +411,8 @@ if QT_IMPORT_ERROR is None:
             title.setStyleSheet("font-size: 28px; font-weight: 700;")
             layout.addWidget(title)
 
-            subtitle = QLabel("Output .ico files will be saved in ico_converted next to each source file unless you choose one output folder.")
-            layout.addWidget(subtitle)
+            self.subtitle_label = QLabel()
+            layout.addWidget(self.subtitle_label)
 
             drop_area_row = QHBoxLayout()
             drop_area_row.setSpacing(16)
@@ -443,6 +465,19 @@ if QT_IMPORT_ERROR is None:
             paste_button.clicked.connect(self.paste_files)
             add_row.addWidget(browse_button)
             add_row.addWidget(paste_button)
+            add_row.addSpacing(10)
+            add_row.addWidget(QLabel("Output mode:"))
+            self.configure_mode_button(self.png_mode_button, "png")
+            self.configure_mode_button(self.ico_mode_button, "ico")
+            add_row.addWidget(self.png_mode_button)
+            add_row.addWidget(self.ico_mode_button)
+            add_row.addSpacing(10)
+            for preset_name in PRESETS:
+                button = QPushButton(preset_name)
+                self.apply_button_style(button)
+                button.clicked.connect(lambda checked=False, name=preset_name: self.apply_preset(name))
+                self.preset_buttons.append(button)
+                add_row.addWidget(button)
             add_row.addStretch(1)
             layout.addLayout(add_row)
 
@@ -492,6 +527,56 @@ if QT_IMPORT_ERROR is None:
             action_row.addWidget(self.about_button)
             layout.addLayout(action_row)
 
+            self.update_output_hint()
+
+        def configure_mode_button(self, button: QPushButton, output_format: str) -> None:
+            button.setCheckable(True)
+            button.setChecked(output_format == self.output_format)
+            button.clicked.connect(lambda checked=False, mode=output_format: self.set_output_format(mode))
+            self.mode_group.addButton(button)
+            self.apply_button_style(button)
+
+        def set_output_format(self, output_format: str) -> None:
+            if self.running or output_format not in OUTPUT_FORMATS:
+                return
+
+            self.output_format = output_format
+            self.png_mode_button.setChecked(output_format == "png")
+            self.ico_mode_button.setChecked(output_format == "ico")
+            self.update_output_hint()
+
+        def update_output_hint(self) -> None:
+            suffix = "png" if self.output_format == "png" else "ico"
+            self.subtitle_label.setText(
+                f"Output .{suffix} files will be saved in {suffix}_converted next to each source file "
+                "unless you choose one output folder."
+            )
+            self.output_edit.setPlaceholderText(rf"Default: each source folder\{suffix}_converted")
+
+        def apply_preset(self, preset_name: str) -> None:
+            if self.running:
+                return
+
+            preset = PRESETS.get(preset_name)
+            if not preset:
+                return
+
+            output_format, sizes = preset
+            self.set_output_format(output_format)
+
+            selected = self.selected_queue_items()
+            if not selected:
+                self.status_label.setText("Select queue item(s) to apply a preset")
+                self.sync_size_controls()
+                return
+
+            for item in selected:
+                item.sizes = set(sizes)
+                self.update_row_size_display(item.row)
+
+            self.status_label.setText(f"Applied {preset_name} preset to {len(selected)} file(s)")
+            self.sync_size_controls()
+
         def apply_button_style(self, button: QPushButton, primary: bool = False) -> None:
             weight = "700" if primary else "400"
             button.setMinimumHeight(30)
@@ -508,6 +593,11 @@ if QT_IMPORT_ERROR is None:
                 "}"
                 "QPushButton:pressed {"
                 "background: palette(midlight);"
+                "}"
+                "QPushButton:checked {"
+                "background: palette(highlight);"
+                "color: palette(highlighted-text);"
+                "font-weight: 700;"
                 "}"
                 "QPushButton:disabled {"
                 "color: palette(mid);"
@@ -754,6 +844,10 @@ if QT_IMPORT_ERROR is None:
                         check.setCheckState(Qt.CheckState.PartiallyChecked)
 
                 self.all_sizes_button.setEnabled(controls_enabled)
+                for button in self.preset_buttons:
+                    button.setEnabled(controls_enabled)
+                self.png_mode_button.setEnabled(not self.running)
+                self.ico_mode_button.setEnabled(not self.running)
                 if selected and all(item.sizes == set(SIZE_OPTIONS) for item in selected):
                     self.all_sizes_button.setText("Clear sizes")
                 else:
@@ -899,7 +993,7 @@ if QT_IMPORT_ERROR is None:
                     self.table.item(item.row, 2).setText("0")
 
             self.thread = QThread()
-            self.worker = QueueWorker(jobs, self.manual_output_dir)
+            self.worker = QueueWorker(jobs, self.manual_output_dir, self.output_format)
             self.worker.moveToThread(self.thread)
             self.thread.started.connect(self.worker.run)
             self.worker.progress.connect(self.update_row)

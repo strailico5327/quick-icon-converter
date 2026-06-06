@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Quick Icon Converter H5 静态版，在浏览器中把 PNG 或 SVG 转换成指定尺寸的 ICO 文件。"
+    />
+    <title>Quick Icon Converter H5</title>
+    <link rel="icon" href="./assets/quick-ico-converter.ico" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <img src="./assets/quick-ico-converter.ico" alt="" class="brand-icon" />
+          <div>
+            <h1>Quick Icon Converter</h1>
+            <p>PNG / SVG 转 ICO，纯前端静态版</p>
+          </div>
+        </div>
+        <div class="privacy-note">文件只在本机浏览器处理</div>
+      </header>
+
+      <section class="workspace" aria-label="ICO 转换工作区">
+        <section class="drop-panel" aria-labelledby="drop-title">
+          <div id="drop-zone" class="drop-zone" tabindex="0">
+            <input id="file-input" type="file" accept=".png,.svg,image/png,image/svg+xml" multiple />
+            <div class="drop-copy">
+              <span class="drop-icon" aria-hidden="true">+</span>
+              <h2 id="drop-title">拖入 PNG / SVG</h2>
+              <p>或点击选择文件，添加后可分别设置 16 到 256 像素输出尺寸。</p>
+            </div>
+          </div>
+
+          <div class="preview-panel" aria-live="polite">
+            <canvas id="preview-canvas" width="160" height="160" aria-label="当前选中文件预览"></canvas>
+            <div>
+              <strong id="preview-title">暂无预览</strong>
+              <span id="preview-meta">添加文件后会显示第一项预览</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="controls-panel" aria-label="转换控制">
+          <div class="control-group">
+            <span class="label">已选文件尺寸</span>
+            <div id="size-controls" class="size-grid" role="group" aria-label="尺寸选项"></div>
+            <button id="all-sizes-button" type="button" class="secondary-button">全选尺寸</button>
+          </div>
+
+          <div class="action-row">
+            <button id="convert-button" type="button" class="primary-button">开始转换</button>
+            <button id="clear-button" type="button" class="secondary-button">清空队列</button>
+            <span id="status-text" class="status-text">等待文件</span>
+          </div>
+        </section>
+
+        <section class="queue-panel" aria-labelledby="queue-title">
+          <div class="queue-head">
+            <div>
+              <h2 id="queue-title">转换队列</h2>
+              <p id="queue-summary">0 个文件</p>
+            </div>
+            <label class="toggle-all">
+              <input id="enable-all" type="checkbox" />
+              <span>启用全部</span>
+            </label>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>选择</th>
+                  <th>启用</th>
+                  <th>状态</th>
+                  <th>剩余</th>
+                  <th>尺寸</th>
+                  <th>文件名</th>
+                  <th>格式</th>
+                  <th>源大小</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="queue-body"></tbody>
+            </table>
+          </div>
+
+          <div id="empty-state" class="empty-state">
+            <strong>还没有文件</strong>
+            <span>把 PNG 或 SVG 拖到上方，或者点击添加。</span>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>
