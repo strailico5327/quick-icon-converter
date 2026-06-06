@@ -3,6 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f6f7f5" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#101419" media="(prefers-color-scheme: dark)" />
     <meta
       name="description"
       content="Quick Icon Converter is a static H5 app that converts PNG or SVG files to PNG or ICO outputs in the browser."
@@ -36,8 +39,14 @@
               <h2 id="drop-title">Drop PNG / SVG files</h2>
               <p>Click to choose files, or drop them here. Export sorted desktop and favicon sizes.</p>
               <div class="drop-actions">
-                <button id="choose-button" class="secondary-button" type="button">Choose files</button>
-                <button id="choose-folder-button" class="secondary-button" type="button">Choose folder</button>
+                <button id="choose-button" class="drop-action-button" type="button">
+                  <span class="drop-action-icon file-icon" aria-hidden="true"></span>
+                  <span>Add files</span>
+                </button>
+                <button id="choose-folder-button" class="drop-action-button" type="button">
+                  <span class="drop-action-icon folder-icon" aria-hidden="true"></span>
+                  <span>Add folder</span>
+                </button>
               </div>
             </div>
           </div>
@@ -71,8 +80,8 @@
           </div>
 
           <div class="action-row">
-            <button id="convert-button" type="button" class="primary-button">Start conversion</button>
             <button id="clear-button" type="button" class="secondary-button">Clear queue</button>
+            <button id="convert-button" type="button" class="primary-button">Start conversion</button>
             <button id="download-button" type="button" class="secondary-button" disabled>Download</button>
             <span id="status-text" class="status-text" aria-live="polite"></span>
           </div>
@@ -133,6 +142,6 @@
       </footer>
     </main>
 
-    <script src="./app.js" defer></script>
+    <script src="./app.js?v=20260607-512-disabled" defer></script>
   </body>
 </html>

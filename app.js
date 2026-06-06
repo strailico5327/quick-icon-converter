@@ -2,12 +2,13 @@
 
 // SPDX-License-Identifier: GPL-3.0-only
 
-const SIZE_OPTIONS = [16, 24, 32, 48, 64, 128, 180, 192, 256];
+const SIZE_OPTIONS = [16, 24, 32, 48, 64, 128, 180, 192, 256, 512];
 const DEFAULT_SIZES = new Set([16, 24, 32, 48]);
+const ICO_SIZE_OPTIONS = new Set([16, 24, 32, 48, 64, 128, 180, 192, 256]);
 const SUPPORTED_TYPES = new Set(["image/png", "image/svg+xml"]);
 const PRESETS = {
   "desktop-mini": { mode: "ico", sizes: [16, 24, 32, 48] },
-  "desktop-large": { mode: "ico", sizes: [64, 128, 256] },
+  "desktop-large": { mode: "png", sizes: [64, 128, 256, 512] },
   "web-favicon": { mode: "png", sizes: [32, 128, 180, 192] },
 };
 
@@ -200,7 +201,7 @@ function bindEvents() {
 
 function renderSizeControls() {
   els.sizeControls.innerHTML = SIZE_OPTIONS.map(size => `
-    <label class="size-option">
+    <label class="size-option" data-size-option="${size}">
       <input type="checkbox" data-size="${size}" />
       <span>${size}x</span>
     </label>
@@ -357,8 +358,19 @@ function syncSizeControls() {
 
   for (const input of inputs) {
     const size = Number(input.dataset.size);
-    input.disabled = !enabled;
+    const supported = isSizeSupportedForMode(size, state.outputMode);
+    const label = input.closest(".size-option");
+    label?.classList.toggle("unsupported", !supported);
+    label?.toggleAttribute("aria-disabled", !supported);
+    label?.setAttribute("title", supported ? "" : "512x is only available in PNG mode");
+    input.disabled = !enabled || !supported;
     if (!enabled) {
+      input.checked = false;
+      input.indeterminate = false;
+      continue;
+    }
+
+    if (!supported) {
       input.checked = false;
       input.indeterminate = false;
       continue;
@@ -376,8 +388,10 @@ function syncSizeControls() {
   }
 
   els.allSizesButton.disabled = !enabled;
-  const allDefaultSizes = state.defaultSizes.size === SIZE_OPTIONS.length;
-  const allSelectedSizes = selected.length > 0 && selected.every(item => item.sizes.size === SIZE_OPTIONS.length);
+  const supportedSizes = supportedSizesForMode(state.outputMode);
+  const allDefaultSizes = supportedSizes.every(size => state.defaultSizes.has(size));
+  const allSelectedSizes =
+    selected.length > 0 && selected.every(item => supportedSizes.every(size => item.sizes.has(size)));
   els.allSizesButton.textContent =
     selected.length > 0
       ? allSelectedSizes
@@ -394,6 +408,7 @@ function setOutputMode(mode) {
   }
   clearGeneratedOutputs();
   state.outputMode = mode;
+  removeUnsupportedSizesForMode();
   setStatus(`${mode.toUpperCase()} output mode selected`);
   render();
 }
@@ -454,15 +469,18 @@ function toggleAllSizesForSelected() {
   clearGeneratedOutputs();
   const selected = selectedItems();
   if (selected.length === 0) {
-    state.defaultSizes = state.defaultSizes.size === SIZE_OPTIONS.length ? new Set() : new Set(SIZE_OPTIONS);
+    const supportedSizes = supportedSizesForMode(state.outputMode);
+    const allSupportedSelected = supportedSizes.every(size => state.defaultSizes.has(size));
+    state.defaultSizes = allSupportedSelected ? new Set() : new Set(supportedSizes);
     setStatus(state.defaultSizes.size === 0 ? "Default sizes cleared" : "All default sizes selected");
     render();
     return;
   }
 
-  const allSelected = selected.every(item => item.sizes.size === SIZE_OPTIONS.length);
+  const supportedSizes = supportedSizesForMode(state.outputMode);
+  const allSelected = selected.every(item => supportedSizes.every(size => item.sizes.has(size)));
   for (const item of selected) {
-    item.sizes = allSelected ? new Set() : new Set(SIZE_OPTIONS);
+    item.sizes = allSelected ? new Set() : new Set(supportedSizes);
     resetItem(item);
   }
   render();
@@ -514,7 +532,8 @@ async function startConversion() {
       item.message = "";
       continue;
     }
-    if (item.sizes.size === 0) {
+    const outputSizes = outputSizesForItem(item);
+    if (outputSizes.length === 0) {
       item.status = "No sizes";
       item.remaining = 0;
       item.message = "";
@@ -522,14 +541,14 @@ async function startConversion() {
     }
 
     item.status = "Working";
-    item.remaining = item.sizes.size;
+    item.remaining = outputSizes.length;
     item.message = "";
     render();
 
     const sourceFolder = uniqueName(sourceStemFor(item.file.name), usedFolderNames);
     sourceFolders.set(item.id, sourceFolder);
 
-    for (const size of Array.from(item.sizes).sort((a, b) => a - b)) {
+    for (const size of outputSizes) {
       try {
         const bytes = await convertFile(item.file, size, state.outputMode);
         const outputName = outputNameFor(item.file.name, size, state.outputMode);
@@ -564,7 +583,29 @@ async function startConversion() {
 }
 
 function buildJobs() {
-  return state.items.filter(item => item.enabled && item.sizes.size > 0);
+  return state.items.filter(item => item.enabled && outputSizesForItem(item).length > 0);
+}
+
+function outputSizesForItem(item) {
+  return Array.from(item.sizes)
+    .filter(size => isSizeSupportedForMode(size, state.outputMode))
+    .sort((a, b) => a - b);
+}
+
+function isSizeSupportedForMode(size, mode) {
+  return mode === "png" || ICO_SIZE_OPTIONS.has(size);
+}
+
+function supportedSizesForMode(mode) {
+  return SIZE_OPTIONS.filter(size => isSizeSupportedForMode(size, mode));
+}
+
+function removeUnsupportedSizesForMode() {
+  state.defaultSizes = new Set(Array.from(state.defaultSizes).filter(size => isSizeSupportedForMode(size, state.outputMode)));
+  for (const item of state.items) {
+    item.sizes = new Set(Array.from(item.sizes).filter(size => isSizeSupportedForMode(size, state.outputMode)));
+    resetItem(item);
+  }
 }
 
 async function convertFileToIco(file, size) {
@@ -654,8 +695,8 @@ function makeIco(pngBytes, size) {
   view.setUint16(0, 0, true);
   view.setUint16(2, 1, true);
   view.setUint16(4, 1, true);
-  view.setUint8(6, size === 256 ? 0 : size);
-  view.setUint8(7, size === 256 ? 0 : size);
+  view.setUint8(6, size >= 256 ? 0 : size);
+  view.setUint8(7, size >= 256 ? 0 : size);
   view.setUint8(8, 0);
   view.setUint8(9, 0);
   view.setUint16(10, 1, true);
@@ -855,7 +896,7 @@ function itemFromElement(element) {
 
 function resetItem(item) {
   item.status = "Queued";
-  item.remaining = item.enabled ? item.sizes.size : 0;
+  item.remaining = item.enabled ? outputSizesForItem(item).length : 0;
   item.message = "";
 }
 
