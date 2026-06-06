@@ -1,0 +1,48 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+.venv*/
+venv/
+env/
+ENV/
+
+# Python packaging and build output
+.packaging-venv/
+build/
+dist/
+release/
+*.egg-info/
+*.exe
+*.spec
+
+# PyInstaller local output
+build_support/pyinstaller-build/
+version_info.txt
+
+# Test and coverage output
+.pytest_cache/
+.coverage
+htmlcov/
+smoke_assets/
+
+# Frontend dependencies and generated output
+node_modules/
+.vite/
+.parcel-cache/
+coverage/
+
+# Local conversion output
+ico_converted/
+*.ico.tmp
+
+# Local editor, OS, and logs
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log

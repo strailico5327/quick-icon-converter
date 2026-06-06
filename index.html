@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Quick Icon Converter is a static H5 app that converts PNG or SVG files to PNG or ICO outputs in the browser."
+    />
+    <title>Quick Icon Converter H5</title>
+    <link rel="icon" href="./assets/quick-ico-converter.svg" type="image/svg+xml" />
+    <link rel="icon" href="./assets/1-necomini-blue_32x.png" type="image/png" sizes="32x32" />
+    <link rel="icon" href="./assets/1-necomini-blue_128x.png" type="image/png" sizes="128x128" />
+    <link rel="icon" href="./assets/1-necomini-blue_192x.png" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="./assets/1-necomini-blue_180x.png" sizes="180x180" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <img src="./assets/1-necomini-blue_192x.png" alt="" class="brand-icon" />
+          <div>
+            <h1>Quick Icon Converter</h1>
+          </div>
+        </div>
+      </header>
+
+      <section class="workspace" aria-label="ICO conversion workspace">
+        <section class="drop-panel" aria-labelledby="drop-title">
+          <div id="drop-zone" class="drop-zone" tabindex="0">
+            <input id="file-input" class="visually-hidden" type="file" accept=".png,.svg,image/png,image/svg+xml" multiple />
+            <input id="folder-input" class="visually-hidden" type="file" accept=".png,.svg,image/png,image/svg+xml" multiple webkitdirectory />
+            <div class="drop-copy">
+              <span class="drop-symbol" aria-hidden="true"></span>
+              <h2 id="drop-title">Drop PNG / SVG files</h2>
+              <p>Click to choose files, or drop them here. Export sorted desktop and favicon sizes.</p>
+              <div class="drop-actions">
+                <button id="choose-button" class="secondary-button" type="button">Choose files</button>
+                <button id="choose-folder-button" class="secondary-button" type="button">Choose folder</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="preview-panel" aria-live="polite">
+            <canvas id="preview-canvas" width="160" height="160" aria-label="Selected file preview"></canvas>
+            <div class="preview-copy">
+              <strong id="preview-title">No preview</strong>
+              <span id="preview-meta">Add files to preview the first item</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="controls-panel" aria-label="Conversion controls">
+          <div class="control-group">
+            <span class="label">Output mode</span>
+            <div class="mode-row">
+              <div class="mode-toggle" role="group" aria-label="Output mode">
+                <button id="mode-png-button" class="mode-button" type="button" data-mode="png">PNG</button>
+                <button id="mode-ico-button" class="mode-button" type="button" data-mode="ico">ICO</button>
+              </div>
+              <div class="preset-grid" aria-label="Size presets">
+                <button class="preset-button" type="button" data-preset="desktop-mini">Desktop Mini</button>
+                <button class="preset-button" type="button" data-preset="desktop-large">Desktop Large</button>
+                <button class="preset-button" type="button" data-preset="web-favicon">Web Favicon</button>
+              </div>
+            </div>
+            <span class="label">Sizes for selected files</span>
+            <div id="size-controls" class="size-grid" role="group" aria-label="Size options"></div>
+            <button id="all-sizes-button" type="button" class="secondary-button">Select all sizes</button>
+          </div>
+
+          <div class="action-row">
+            <button id="convert-button" type="button" class="primary-button">Start conversion</button>
+            <button id="clear-button" type="button" class="secondary-button">Clear queue</button>
+            <button id="download-button" type="button" class="secondary-button" disabled>Download</button>
+            <span id="status-text" class="status-text" aria-live="polite"></span>
+          </div>
+        </section>
+
+        <section class="queue-panel" aria-labelledby="queue-title">
+          <div class="queue-head">
+            <div>
+              <h2 id="queue-title">Conversion Queue</h2>
+              <p id="queue-summary">0 files</p>
+            </div>
+            <label class="toggle-all">
+              <input id="enable-all" type="checkbox" />
+              <span>Enable all</span>
+            </label>
+          </div>
+
+          <div class="table-wrap hidden">
+            <table>
+              <thead>
+                <tr>
+                  <th>
+                    <label class="header-check">
+                      <input id="select-all-rows" type="checkbox" aria-label="Select all rows" />
+                      <span>Selected</span>
+                    </label>
+                  </th>
+                  <th>
+                    <label class="header-check">
+                      <input id="enable-all-rows" type="checkbox" aria-label="Enable all rows" />
+                      <span>Enabled</span>
+                    </label>
+                  </th>
+                  <th>Status</th>
+                  <th>Left</th>
+                  <th>Sizes</th>
+                  <th>File name</th>
+                  <th>Format</th>
+                  <th>Source size</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="queue-body"></tbody>
+            </table>
+          </div>
+
+          <div id="empty-state" class="empty-state">
+            <strong>No files yet</strong>
+            <span>Drop PNG or SVG files above, or choose files from your device.</span>
+          </div>
+        </section>
+      </section>
+
+      <footer class="legal">
+        <span>Copyright (C) 2026 <a href="https://github.com/strailico5327/quick-icon-converter">strailico5327</a></span>
+        <span>GNU GPLv3. This program comes with no warranty.</span>
+        <span>Files are processed locally in your browser.</span>
+      </footer>
+    </main>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>
