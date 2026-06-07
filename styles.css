@@ -120,6 +120,7 @@ h1 {
 .workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-rows: auto auto;
   gap: 16px;
 }
 
@@ -195,52 +196,14 @@ h1 {
 }
 
 .drop-action-icon {
-  position: relative;
-  display: inline-block;
   width: 18px;
   height: 18px;
-  color: currentColor;
-}
-
-.file-icon::before {
-  position: absolute;
-  inset: 1px 4px 1px 3px;
-  content: "";
-  border: 2px solid currentColor;
-  border-radius: 2px;
-}
-
-.file-icon::after {
-  position: absolute;
-  left: 1px;
-  top: 6px;
-  content: "+";
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.folder-icon::before {
-  position: absolute;
-  left: 1px;
-  right: 1px;
-  bottom: 2px;
-  height: 11px;
-  content: "";
-  border: 2px solid currentColor;
-  border-radius: 2px;
-}
-
-.folder-icon::after {
-  position: absolute;
-  left: 3px;
-  top: 3px;
-  width: 8px;
-  height: 5px;
-  content: "";
-  border: 2px solid currentColor;
-  border-bottom: 0;
-  border-radius: 2px 2px 0 0;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .drop-symbol {
@@ -465,6 +428,9 @@ h1 {
 
 .queue-panel {
   grid-column: 1;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
   padding: 16px;
   min-width: 0;
 }
@@ -474,19 +440,64 @@ h1 {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
 }
 
-.toggle-all {
+.queue-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
-  white-space: nowrap;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-.toggle-all input,
-.row-select,
-.row-enabled {
+.queue-command-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: 180px;
+  min-height: 44px;
+  padding: 8px 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.queue-command-button svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.queue-command-button .clear-icon,
+.queue-command-button.clear-mode .remove-icon {
+  display: none;
+}
+
+.queue-command-button.clear-mode .clear-icon {
+  display: block;
+}
+
+.queue-command-button:hover {
+  border-color: var(--blue);
+  background: #f4f8ff;
+}
+
+.queue-command-button:disabled {
+  color: var(--muted);
+  background: var(--panel);
+  opacity: 0.58;
+}
+
+.header-check input,
+.row-active {
   width: 16px;
   height: 16px;
   accent-color: var(--blue);
@@ -540,13 +551,14 @@ th.center {
 
 tbody tr {
   background: #fff;
+  cursor: pointer;
 }
 
 tbody tr:nth-child(even) {
   background: var(--panel-soft);
 }
 
-tbody tr.selected {
+tbody tr.highlighted {
   outline: 2px solid rgba(37, 99, 235, 0.38);
   outline-offset: -2px;
 }
@@ -602,12 +614,16 @@ tbody tr:last-child td {
   padding: 0 9px;
 }
 
+.row-active,
+.row-button {
+  cursor: pointer;
+}
+
 .empty-state {
   display: grid;
   gap: 5px;
   place-items: center;
-  min-height: 150px;
-  margin-top: 12px;
+  min-height: 220px;
   border: 1px dashed var(--line-strong);
   border-radius: 8px;
   background: var(--panel-soft);
@@ -642,6 +658,7 @@ tbody tr:last-child td {
 
   .workspace {
     grid-template-columns: 1fr;
+    grid-template-rows: auto;
   }
 
   .controls-panel,
@@ -731,6 +748,7 @@ tbody tr:last-child td {
 
   .secondary-button,
   .row-button,
+  .queue-command-button,
   .drop-action-button,
   .preset-button {
     background: #151b22;
@@ -739,9 +757,15 @@ tbody tr:last-child td {
 
   .secondary-button:hover,
   .row-button:hover,
+  .queue-command-button:hover,
   .drop-action-button:hover,
   .preset-button:hover {
     background: #1f2a36;
+  }
+
+  .queue-command-button:disabled {
+    background: #151b22;
+    color: #7d8998;
   }
 
   th {

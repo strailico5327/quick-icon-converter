@@ -2,14 +2,14 @@
 
 // SPDX-License-Identifier: GPL-3.0-only
 
-const SIZE_OPTIONS = [16, 24, 32, 48, 64, 128, 180, 192, 256, 512];
+const SIZE_OPTIONS = [16, 24, 32, 48, 64, 128, 180, 192, 256, 384, 512];
 const DEFAULT_SIZES = new Set([16, 24, 32, 48]);
 const ICO_SIZE_OPTIONS = new Set([16, 24, 32, 48, 64, 128, 180, 192, 256]);
 const SUPPORTED_TYPES = new Set(["image/png", "image/svg+xml"]);
 const PRESETS = {
   "desktop-mini": { mode: "ico", sizes: [16, 24, 32, 48] },
-  "desktop-large": { mode: "png", sizes: [64, 128, 256, 512] },
-  "web-favicon": { mode: "png", sizes: [32, 128, 180, 192] },
+  "desktop-large": { mode: "ico", sizes: [64, 128, 256] },
+  "web-favicon": { mode: "png", sizes: [32, 128, 180, 192, 384, 512] },
 };
 
 const state = {
@@ -19,6 +19,7 @@ const state = {
   outputMode: "ico",
   defaultSizes: new Set(DEFAULT_SIZES),
   outputs: [],
+  activeItemId: null,
 };
 
 const els = {
@@ -32,14 +33,12 @@ const els = {
   modeButtons: Array.from(document.querySelectorAll(".mode-button")),
   presetButtons: Array.from(document.querySelectorAll(".preset-button")),
   convertButton: document.querySelector("#convert-button"),
-  clearButton: document.querySelector("#clear-button"),
+  removeSelectedButton: document.querySelector("#remove-selected-button"),
   downloadButton: document.querySelector("#download-button"),
   statusText: document.querySelector("#status-text"),
   queueBody: document.querySelector("#queue-body"),
   queueSummary: document.querySelector("#queue-summary"),
-  enableAll: document.querySelector("#enable-all"),
-  selectAllRows: document.querySelector("#select-all-rows"),
-  enableAllRows: document.querySelector("#enable-all-rows"),
+  toggleAllRows: document.querySelector("#toggle-all-rows"),
   emptyState: document.querySelector("#empty-state"),
   tableWrap: document.querySelector(".table-wrap"),
   previewCanvas: document.querySelector("#preview-canvas"),
@@ -130,28 +129,14 @@ function bindEvents() {
 
   els.allSizesButton.addEventListener("click", toggleAllSizesForSelected);
   els.convertButton.addEventListener("click", startConversion);
-  els.clearButton.addEventListener("click", clearQueue);
+  els.removeSelectedButton.addEventListener("click", removeSelectedItems);
   els.downloadButton.addEventListener("click", downloadGeneratedOutputs);
 
-  els.enableAll.addEventListener("change", () => {
+  els.toggleAllRows.addEventListener("change", () => {
     if (state.running) {
       return;
     }
-    setAllRowsEnabled(els.enableAll.checked);
-  });
-
-  els.enableAllRows.addEventListener("change", () => {
-    if (state.running) {
-      return;
-    }
-    setAllRowsEnabled(els.enableAllRows.checked);
-  });
-
-  els.selectAllRows.addEventListener("change", () => {
-    if (state.running) {
-      return;
-    }
-    setAllRowsSelected(els.selectAllRows.checked);
+    setAllRowsActive(els.toggleAllRows.checked);
   });
 
   els.queueBody.addEventListener("change", event => {
@@ -165,35 +150,31 @@ function bindEvents() {
       return;
     }
 
-    if (input.classList.contains("row-select")) {
+    if (input.classList.contains("row-active")) {
       item.selected = input.checked;
-      render();
-      updatePreview();
-    }
-
-    if (input.classList.contains("row-enabled")) {
-      clearGeneratedOutputs();
       item.enabled = input.checked;
       if (item.enabled && item.sizes.size === 0) {
         item.sizes = new Set(state.defaultSizes);
       }
-      resetItem(item);
       render();
     }
   });
 
   els.queueBody.addEventListener("click", event => {
+    const row = event.target.closest("tr[data-id]");
     const button = event.target.closest("button[data-action]");
-    if (!button || state.running) {
+    if (state.running) {
+      return;
+    }
+    if (!button) {
+      if (row && !event.target.closest("input, button")) {
+        setActiveItem(Number(row.dataset.id));
+      }
       return;
     }
 
     const item = itemFromElement(button);
-    if (!item) {
-      return;
-    }
-
-    if (button.dataset.action === "delete") {
+    if (item && button.dataset.action === "delete") {
       removeItem(item.id);
     }
   });
@@ -270,20 +251,24 @@ function render() {
   const hasItems = state.items.length > 0;
   els.emptyState.classList.toggle("hidden", hasItems);
   els.tableWrap.classList.toggle("hidden", !hasItems);
-  els.queueSummary.textContent = `${state.items.length} file${state.items.length === 1 ? "" : "s"}, ${selectedItems().length} selected`;
+  els.queueSummary.textContent = `${state.items.length} file${state.items.length === 1 ? "" : "s"}`;
   els.convertButton.disabled = state.running || buildJobs().length === 0;
-  els.clearButton.disabled = state.running || !hasItems;
-  els.downloadButton.disabled = state.running || state.outputs.length === 0;
-  els.downloadButton.textContent = state.outputs.length > 1 ? "Download ZIP" : "Download";
-  els.enableAll.disabled = state.running || !hasItems;
+  const selectedCount = selectedItems().length;
+  const allRowsSelected = hasItems && selectedCount === state.items.length;
+  els.removeSelectedButton.disabled = state.running || selectedCount === 0;
+  els.removeSelectedButton.classList.toggle("clear-mode", allRowsSelected);
+  els.removeSelectedButton.querySelector("span").textContent = allRowsSelected ? "Clear queue" : "Remove selected";
+  els.downloadButton.disabled = state.running || selectedOutputs().length === 0;
+  els.downloadButton.textContent = "Download";
   syncQueueCheckboxes(hasItems);
 
   els.queueBody.innerHTML = state.items.map(item => {
     const statusClass = statusClassFor(item);
+    const active = item.selected && item.enabled;
+    const highlighted = item.id === state.activeItemId;
     return `
-      <tr data-id="${item.id}" class="${item.selected ? "selected" : ""} ${item.enabled ? "" : "disabled"}">
-        <td class="center"><input class="row-select" type="checkbox" ${item.selected ? "checked" : ""} ${state.running ? "disabled" : ""} /></td>
-        <td class="center"><input class="row-enabled" type="checkbox" ${item.enabled ? "checked" : ""} ${state.running ? "disabled" : ""} /></td>
+      <tr data-id="${item.id}" class="${highlighted ? "highlighted" : ""} ${item.enabled ? "" : "disabled"}">
+        <td class="center"><input class="row-active" type="checkbox" aria-label="Toggle row" ${active ? "checked" : ""} ${state.running ? "disabled" : ""} /></td>
         <td><span class="status-badge ${statusClass}" title="${escapeAttr(item.message)}">${escapeHtml(statusText(item))}</span></td>
         <td class="center">${item.enabled ? item.remaining : 0}</td>
         <td class="sizes-cell">${sizeText(item.sizes)}</td>
@@ -300,40 +285,32 @@ function render() {
 }
 
 function syncQueueCheckboxes(hasItems) {
-  const allEnabled = hasItems && state.items.every(item => item.enabled);
-  const someEnabled = hasItems && state.items.some(item => item.enabled);
-  const allSelected = hasItems && state.items.every(item => item.selected);
-  const someSelected = hasItems && state.items.some(item => item.selected);
+  const isActive = item => item.selected && item.enabled;
+  const allActive = hasItems && state.items.every(isActive);
+  const someActive = hasItems && state.items.some(isActive);
 
-  for (const checkbox of [els.enableAll, els.enableAllRows]) {
-    checkbox.disabled = state.running || !hasItems;
-    checkbox.checked = allEnabled;
-    checkbox.indeterminate = someEnabled && !allEnabled;
-  }
-
-  els.selectAllRows.disabled = state.running || !hasItems;
-  els.selectAllRows.checked = allSelected;
-  els.selectAllRows.indeterminate = someSelected && !allSelected;
+  els.toggleAllRows.disabled = state.running || !hasItems;
+  els.toggleAllRows.checked = allActive;
+  els.toggleAllRows.indeterminate = someActive && !allActive;
 }
 
-function setAllRowsEnabled(enabled) {
-  clearGeneratedOutputs();
+function setAllRowsActive(active) {
   for (const item of state.items) {
-    item.enabled = enabled;
+    item.selected = active;
+    item.enabled = active;
     if (item.enabled && item.sizes.size === 0) {
       item.sizes = new Set(state.defaultSizes);
     }
-    resetItem(item);
   }
-  setStatus(enabled ? "All files enabled" : "All files disabled");
+  setStatus(active ? "All rows selected" : "All rows cleared");
   render();
 }
 
-function setAllRowsSelected(selected) {
-  for (const item of state.items) {
-    item.selected = selected;
+function setActiveItem(id) {
+  if (state.activeItemId === id) {
+    return;
   }
-  setStatus(selected ? "All rows selected" : "All rows cleared");
+  state.activeItemId = id;
   render();
   updatePreview();
 }
@@ -362,7 +339,7 @@ function syncSizeControls() {
     const label = input.closest(".size-option");
     label?.classList.toggle("unsupported", !supported);
     label?.toggleAttribute("aria-disabled", !supported);
-    label?.setAttribute("title", supported ? "" : "512x is only available in PNG mode");
+    label?.setAttribute("title", supported ? "" : `${size}x is only available in PNG mode`);
     input.disabled = !enabled || !supported;
     if (!enabled) {
       input.checked = false;
@@ -490,18 +467,24 @@ function clearGeneratedOutputs() {
   state.outputs = [];
 }
 
+function selectedOutputs() {
+  const selectedIds = new Set(selectedItems().map(item => item.id));
+  return state.outputs.filter(output => selectedIds.has(output.itemId));
+}
+
 function downloadGeneratedOutputs() {
-  if (state.outputs.length === 0) {
+  const outputs = selectedOutputs();
+  if (outputs.length === 0) {
     return;
   }
 
-  if (state.outputs.length === 1) {
-    const output = state.outputs[0];
+  if (outputs.length === 1) {
+    const output = outputs[0];
     downloadBlob(new Blob([output.bytes], { type: mimeTypeForMode(state.outputMode) }), output.name);
     return;
   }
 
-  const zipFiles = state.outputs.map(output => ({
+  const zipFiles = outputs.map(output => ({
     name: output.zipPath,
     bytes: output.bytes,
   }));
@@ -553,6 +536,7 @@ async function startConversion() {
         const bytes = await convertFile(item.file, size, state.outputMode);
         const outputName = outputNameFor(item.file.name, size, state.outputMode);
         outputs.push({
+          itemId: item.id,
           name: outputName,
           zipPath: `${sourceFolders.get(item.id)}/${outputName}`,
           bytes,
@@ -822,7 +806,7 @@ function downloadBlob(blob, name) {
 }
 
 async function updatePreview() {
-  const item = selectedItems()[0] || state.items[0];
+  const item = activeItem();
   if (!item) {
     drawEmptyPreview();
     return;
@@ -849,6 +833,10 @@ async function updatePreview() {
   }
 }
 
+function activeItem() {
+  return state.items.find(item => item.id === state.activeItemId) || null;
+}
+
 function drawEmptyPreview(text = "") {
   const canvas = els.previewCanvas;
   const ctx = canvas.getContext("2d");
@@ -865,20 +853,30 @@ function drawEmptyPreview(text = "") {
 function removeItem(id) {
   clearGeneratedOutputs();
   state.items = state.items.filter(item => item.id !== id);
+  if (state.activeItemId === id) {
+    state.activeItemId = null;
+  }
   setStatus("Queue item deleted");
   render();
   updatePreview();
 }
 
-function clearQueue() {
+function removeSelectedItems() {
   if (state.running) {
     return;
   }
+  const selectedCount = selectedItems().length;
+  if (selectedCount === 0) {
+    return;
+  }
   clearGeneratedOutputs();
-  state.items = [];
-  setStatus("Queue cleared");
+  state.items = state.items.filter(item => !item.selected);
+  if (!state.items.some(item => item.id === state.activeItemId)) {
+    state.activeItemId = null;
+  }
+  setStatus(state.items.length === 0 ? "Queue cleared" : `Removed ${selectedCount} selected file${selectedCount === 1 ? "" : "s"}`);
   render();
-  drawEmptyPreview();
+  updatePreview();
 }
 
 function selectedItems() {

@@ -10,13 +10,13 @@
       name="description"
       content="Quick Icon Converter is a static H5 app that converts PNG or SVG files to PNG or ICO outputs in the browser."
     />
-    <title>Quick Icon Converter H5</title>
+    <title>Quick Icon Converter</title>
     <link rel="icon" href="./assets/quick-ico-converter.svg" type="image/svg+xml" />
     <link rel="icon" href="./assets/1-necomini-blue_32x.png" type="image/png" sizes="32x32" />
     <link rel="icon" href="./assets/1-necomini-blue_128x.png" type="image/png" sizes="128x128" />
     <link rel="icon" href="./assets/1-necomini-blue_192x.png" type="image/png" sizes="192x192" />
     <link rel="apple-touch-icon" href="./assets/1-necomini-blue_180x.png" sizes="180x180" />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=20260607-row-highlight-preview" />
   </head>
   <body>
     <main class="app-shell">
@@ -37,14 +37,22 @@
             <div class="drop-copy">
               <span class="drop-symbol" aria-hidden="true"></span>
               <h2 id="drop-title">Drop PNG / SVG files</h2>
-              <p>Click to choose files, or drop them here. Export sorted desktop and favicon sizes.</p>
               <div class="drop-actions">
                 <button id="choose-button" class="drop-action-button" type="button">
-                  <span class="drop-action-icon file-icon" aria-hidden="true"></span>
+                  <svg class="drop-action-icon" aria-hidden="true" viewBox="0 0 24 24">
+                    <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"></path>
+                    <path d="M14 2v5h5"></path>
+                    <path d="M12 11v6"></path>
+                    <path d="M9 14h6"></path>
+                  </svg>
                   <span>Add files</span>
                 </button>
                 <button id="choose-folder-button" class="drop-action-button" type="button">
-                  <span class="drop-action-icon folder-icon" aria-hidden="true"></span>
+                  <svg class="drop-action-icon" aria-hidden="true" viewBox="0 0 24 24">
+                    <path d="M4 6h6l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"></path>
+                    <path d="M12 11v6"></path>
+                    <path d="M9 14h6"></path>
+                  </svg>
                   <span>Add folder</span>
                 </button>
               </div>
@@ -68,6 +76,7 @@
                 <button id="mode-png-button" class="mode-button" type="button" data-mode="png">PNG</button>
                 <button id="mode-ico-button" class="mode-button" type="button" data-mode="ico">ICO</button>
               </div>
+              <span class="label">Presets</span>
               <div class="preset-grid" aria-label="Size presets">
                 <button class="preset-button" type="button" data-preset="desktop-mini">Desktop Mini</button>
                 <button class="preset-button" type="button" data-preset="desktop-large">Desktop Large</button>
@@ -80,7 +89,6 @@
           </div>
 
           <div class="action-row">
-            <button id="clear-button" type="button" class="secondary-button">Clear queue</button>
             <button id="convert-button" type="button" class="primary-button">Start conversion</button>
             <button id="download-button" type="button" class="secondary-button" disabled>Download</button>
             <span id="status-text" class="status-text" aria-live="polite"></span>
@@ -93,10 +101,25 @@
               <h2 id="queue-title">Conversion Queue</h2>
               <p id="queue-summary">0 files</p>
             </div>
-            <label class="toggle-all">
-              <input id="enable-all" type="checkbox" />
-              <span>Enable all</span>
-            </label>
+            <div class="queue-actions">
+              <button id="remove-selected-button" type="button" class="queue-command-button">
+                <svg class="remove-icon" aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M4 7h9"></path>
+                  <path d="M4 12h12"></path>
+                  <path d="M4 17h7"></path>
+                  <path d="M17 14l4 4"></path>
+                  <path d="M21 14l-4 4"></path>
+                </svg>
+                <svg class="clear-icon" aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M3 6h18"></path>
+                  <path d="M8 6V4h8v2"></path>
+                  <path d="M19 6l-1 14H6L5 6"></path>
+                  <path d="M10 11v5"></path>
+                  <path d="M14 11v5"></path>
+                </svg>
+                <span>Remove selected</span>
+              </button>
+            </div>
           </div>
 
           <div class="table-wrap hidden">
@@ -105,14 +128,7 @@
                 <tr>
                   <th>
                     <label class="header-check">
-                      <input id="select-all-rows" type="checkbox" aria-label="Select all rows" />
-                      <span>Selected</span>
-                    </label>
-                  </th>
-                  <th>
-                    <label class="header-check">
-                      <input id="enable-all-rows" type="checkbox" aria-label="Enable all rows" />
-                      <span>Enabled</span>
+                      <input id="toggle-all-rows" type="checkbox" aria-label="Toggle all rows" />
                     </label>
                   </th>
                   <th>Status</th>
@@ -129,8 +145,7 @@
           </div>
 
           <div id="empty-state" class="empty-state">
-            <strong>No files yet</strong>
-            <span>Drop PNG or SVG files above, or choose files from your device.</span>
+            <strong>Queue is empty</strong>
           </div>
         </section>
       </section>
@@ -142,6 +157,6 @@
       </footer>
     </main>
 
-    <script src="./app.js?v=20260607-512-disabled" defer></script>
+    <script src="./app.js?v=20260607-row-highlight-preview" defer></script>
   </body>
 </html>
